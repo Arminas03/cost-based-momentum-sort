@@ -18,7 +18,7 @@ def find_momentum_split(
     stock_returns = (
         stock_data[
             (stock_data["date"] <= date)
-            & (stock_data["date"] >= date - timedelta(days=365))
+            & (stock_data["date"] > date - pd.DateOffset(years=1))
         ]
         .groupby(["PERMNO"])["RET"]
         .apply(compute_return)
