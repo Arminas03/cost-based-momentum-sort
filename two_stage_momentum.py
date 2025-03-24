@@ -1,5 +1,5 @@
 from datetime import datetime
-from main import extract_data
+from prep_data import extract_data
 import pandas as pd
 
 
@@ -28,7 +28,7 @@ def find_initial_momentum_split(
 
 
 def cost_func(permno):
-    # TODO: implement and import
+    # TODO: implement/import
     return 0.1
 
 
@@ -39,8 +39,6 @@ def adjust_momentum_with_costs(
     keep_long=0.5,
     keep_short=0.5,
 ):
-    print(long_split)
-    print(short_split)
     for permno, _ in long_split.items():
         long_split.loc[permno] -= cost_sensitivity * cost_func(permno)
     for permno, _ in short_split.items():
