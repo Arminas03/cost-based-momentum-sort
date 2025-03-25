@@ -13,7 +13,7 @@ def compute_return(returns):
 
 
 def find_momentum_split(
-    stock_data, date: datetime, long_split_proportion=0.4, short_split_proportion=0.4
+    stock_data, date: datetime, long_split_proportion=0.2, short_split_proportion=0.2
 ):
     stock_returns = (
         stock_data[
@@ -40,8 +40,8 @@ def adjust_momentum_with_costs(
     long_split: pd.Series,
     short_split: pd.Series,
     cost_sensitivity=1,
-    keep_long=0.8,
-    keep_short=0.8,
+    keep_long=0.5,
+    keep_short=0.5,
 ):
     for permno, _ in long_split.items():
         long_split.loc[permno] -= cost_sensitivity * cost_func(permno)

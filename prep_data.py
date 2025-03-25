@@ -23,7 +23,7 @@ def extract_data(path):
     # TODO: issue, we lose 8mil out of 13mil data after dropna and removing str instances
     data = pd.read_csv(path)
     data = data.dropna()
-    data = data[data["PERMNO"] < 12000]
+    data = data[data["SHRCD"] <= 11]
     data = data[~data["RET"].apply(lambda x: isinstance(x, str))]
 
     data["date"] = pd.to_datetime(data["date"])
