@@ -27,6 +27,8 @@ def extract_data(path):
     data = data[~data["RET"].apply(lambda x: isinstance(x, str))]
 
     data["date"] = pd.to_datetime(data["date"])
+    data["year"] = data["date"].dt.year
+    data["month"] = data["date"].dt.month
     data["RET"] = data["RET"].astype("float")
 
     return data
