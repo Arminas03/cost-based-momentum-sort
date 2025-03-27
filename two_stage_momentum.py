@@ -19,6 +19,10 @@ def compute_return(returns):
     return final_return - 1
 
 
+def half_year_ret_sq_sum(returns):
+    return sum(returns[-6:])
+
+
 def find_momentum_split(
     stock_data: pd.DataFrame, long_split_proportion=0.2, short_split_proportion=0.2
 ):
@@ -33,11 +37,13 @@ def find_momentum_split(
                 "quoted_spread",
                 lambda group: pick_random_day(group, rng),
             ),
+            return_squared=("DlyRet", lambda r: (r**2).sum()),
         )
         .groupby(["PERMNO"])
         .agg(
             returns=("returns", compute_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
+            return_squared=("return_squared", half_year_ret_sq_sum),
         )
     )
 
@@ -89,8 +95,7 @@ def find_splits_per_date(data):
             data[
                 (data["DlyCalDt"] <= date)
                 & (data["DlyCalDt"] > date - pd.DateOffset(years=1))
-            ],
-            date,
+            ]
         )
         splits[str(date.to_pydatetime().date())] = {
             "long_split": list(long_split.keys()),
