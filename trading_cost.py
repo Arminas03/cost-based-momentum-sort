@@ -1,11 +1,11 @@
 import pandas as pd
 
 
-def pick_random_day(group):
+def pick_random_day(group, rng):
     """
     Picks random day
     """
-    return group.sample(n=1, random_state=42)
+    return group[-15:].sample(n=1, random_state=rng)
 
 
 def calculate_avg_spread_1y(data_one_day):
@@ -17,16 +17,21 @@ def calculate_avg_spread_1y(data_one_day):
     ).mean()
 
 
-def quoted_spread(data: pd.DataFrame, permno):
-    """
-    Finds quoted bid ask spread
-    """
-    # TODO: fix randomness in pick_random_day
-    return calculate_avg_spread_1y(
-        data[(data["date"].dt.day.between(15, 31)) & (data["PERMNO"] == permno)].apply(
-            pick_random_day
-        )
-    )
+# def quoted_spread(data: pd.DataFrame, permno):
+#     """
+#     Finds quoted bid ask spread
+#     """
+#     # TODO: fix randomness in pick_random_day
+#     return calculate_avg_spread_1y(
+#         data[(data["date"].dt.day.between(15, 31)) & (data["PERMNO"] == permno)].apply(
+#             pick_random_day
+#         )
+#     )
+
+
+def quoted_spread(quoted_spread):
+    print(len(quoted_spread))
+    return 0.1
 
 
 def main():

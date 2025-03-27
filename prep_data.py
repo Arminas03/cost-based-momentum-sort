@@ -22,14 +22,19 @@ def query_data(db):
 def extract_data(path):
     # TODO: issue, we lose 8mil out of 13mil data after dropna and removing str instances
     data = pd.read_csv(path)
-    data = data.dropna()
-    data = data[data["SHRCD"] <= 11]
-    data = data[~data["RET"].apply(lambda x: isinstance(x, str))]
 
-    data["date"] = pd.to_datetime(data["date"])
-    data["year"] = data["date"].dt.year
-    data["month"] = data["date"].dt.month
-    data["RET"] = data["RET"].astype("float")
+    data = data.dropna()
+    # data = data[data["ShareType"] <= 11]
+    data = data[data["PrimaryExch"] == "N"]
+    data = data[~data["DlyRet"].apply(lambda x: isinstance(x, str))]
+
+    data["DlyCalDt"] = pd.to_datetime(data["DlyCalDt"])
+    data["year"] = data["DlyCalDt"].dt.year
+    data["month"] = data["DlyCalDt"].dt.month
+    data["quoted_spread"] = (
+        2 * (data["DlyAsk"] - data["DlyBid"]) / (data["DlyAsk"] + data["DlyBid"])
+    )
+    data["DlyRet"] = data["DlyRet"].astype("float")
 
     return data
 
