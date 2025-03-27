@@ -24,7 +24,7 @@ def extract_data(path):
     data = pd.read_csv(path)
 
     data = data.dropna()
-    # data = data[data["ShareType"] <= 11]
+    print(data["ShareType"].unique())
     data = data[data["PrimaryExch"] == "N"]
     data = data[~data["DlyRet"].apply(lambda x: isinstance(x, str))]
 
@@ -40,7 +40,7 @@ def extract_data(path):
 
 
 def main():
-    df = extract_data("2019-2024_data.csv")
+    df = extract_data("2019-2024 v2.csv")
     df = df.dropna()
 
 
