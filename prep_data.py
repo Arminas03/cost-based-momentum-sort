@@ -37,7 +37,6 @@ def extract_data(path):
 
 def main():
     df = extract_data("2019-2024 v2.csv")
-    df = df.dropna()
 
 
 if __name__ == "__main__":
