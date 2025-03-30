@@ -2,7 +2,6 @@ from datetime import datetime
 from prep_data import extract_data
 import pandas as pd
 import json
-from trading_cost import quoted_spread, pick_random_day
 import numpy as np
 import itertools
 
@@ -20,20 +19,29 @@ def compute_return(returns):
     return final_return - 1
 
 
+def pick_random_day(group: pd.DataFrame, rng):
+    """
+    Picks random day from 15th until the end of the month
+    """
+    return group[-15:].sample(n=1, random_state=rng)
+
+
 def get_half_year_daily_returns(returns):
+    """
+    Returns a list of daily returns for the last six months
+    """
     return list(itertools.chain(*returns[-6:]))
 
 
-def find_momentum_split(
-    stock_data: pd.DataFrame, long_split_proportion=0.2, short_split_proportion=0.2
-):
+def get_stock_returns(stock_data: pd.DataFrame):
     """
-    Finds momentum strategy long and short legs
+    Gets cumulative stock returns for each permno together with a list
+    of daily returns
     """
-    stock_returns = (
+    return (
         stock_data.groupby(["PERMNO", "month"])[["DlyRet", "quoted_spread"]]
         .agg(
-            returns=("DlyRet", compute_return),
+            cumulative_return=("DlyRet", compute_return),
             day_quoted_spread=(
                 "quoted_spread",
                 lambda group: pick_random_day(group, rng),
@@ -42,32 +50,38 @@ def find_momentum_split(
         )
         .groupby(["PERMNO"])
         .agg(
-            returns=("returns", compute_return),
+            cumulative_return=("cumulative_return", compute_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
             daily_returns=("daily_returns", get_half_year_daily_returns),
         )
     )
 
+
+def find_momentum_split(
+    stock_data: pd.DataFrame, long_split_proportion=0.2, short_split_proportion=0.2
+):
+    """
+    Finds standard momentum strategy long and short legs
+    """
+    stock_returns = get_stock_returns(stock_data)
+
     return (
         stock_returns.nlargest(
-            int(len(stock_returns) * long_split_proportion), "returns"
+            int(len(stock_returns) * long_split_proportion), "cumulative_return"
         ),
         stock_returns.nsmallest(
-            int(len(stock_returns) * short_split_proportion), "returns"
+            int(len(stock_returns) * short_split_proportion), "cumulative_return"
         ),
     )
 
 
-def adjust_momentum_with_costs(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
+def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
     """
-    Adjusts initial momentum sort with trading costs
+    Calculates cost-adjusted returns for each split
     """
-
-    long_split, short_split = find_momentum_split(data)
-
     new_long_split = pd.DataFrame(
         {
-            "returns": long_split["returns"]
+            "cost_adjusted_return": long_split["cumulative_return"]
             - cost_sensitivity * long_split["avg_quoted_spread"]
         }
     )
@@ -75,28 +89,40 @@ def adjust_momentum_with_costs(data, cost_sensitivity=1, keep_long=0.5, keep_sho
 
     new_short_split = pd.DataFrame(
         {
-            "returns": short_split["returns"]
-            - cost_sensitivity * short_split["avg_quoted_spread"]
+            "cost_adjusted_return": short_split["cumulative_return"]
+            + cost_sensitivity * short_split["avg_quoted_spread"]
         }
     )
     new_short_split["daily_returns"] = short_split["daily_returns"]
 
+    return new_long_split, new_short_split
+
+
+def get_final_splits(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
+    """
+    Gets final long and short legs based on trading costs
+    and input parameters
+    """
+    new_long_split, new_short_split = adjust_momentum_with_costs(
+        *find_momentum_split(data), cost_sensitivity
+    )
+
     return (
         dict(
-            new_long_split.nlargest(int(len(long_split) * keep_long), "returns")[
-                ["returns", "daily_returns"]
-            ].to_dict(orient="index")
+            new_long_split.nlargest(
+                int(len(new_long_split) * keep_long), "cost_adjusted_return"
+            )[["cost_adjusted_return", "daily_returns"]].to_dict(orient="index")
         ),
         dict(
-            new_short_split.nsmallest(int(len(short_split) * keep_short), "returns")[
-                ["returns", "daily_returns"]
-            ].to_dict(orient="index")
+            new_short_split.nsmallest(
+                int(len(new_short_split) * keep_short), "cost_adjusted_return"
+            )[["cost_adjusted_return", "daily_returns"]].to_dict(orient="index")
         ),
     )
 
 
 def find_splits_per_date(data):
-    """ "
+    """
     Finds the two-stage sorting long and short legs
     """
     splits = dict()
@@ -105,7 +131,7 @@ def find_splits_per_date(data):
         start=datetime(2019, 12, 31), end=datetime(2024, 12, 31), freq="ME"
     ):
         print(date)
-        long_split, short_split = adjust_momentum_with_costs(
+        long_split, short_split = get_final_splits(
             data[
                 (data["DlyCalDt"] <= date)
                 & (data["DlyCalDt"] > date - pd.DateOffset(years=1))

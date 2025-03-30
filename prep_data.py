@@ -1,32 +1,21 @@
-import os
-from dotenv import load_dotenv
 import pandas as pd
-import wrds
-from decimal import Decimal
 
 
-def query_data(db):
-    df = db.raw_sql(
-        """
-            select
-                permno, ticker, yyyymmdd, dlycaldt, dlyprevprc, dlyvol,
-                dlyclose, dlybid, dlyask
-            from crsp.wrds_dsfv2_query
-            where yyyymmdd >= 20240101
-        """
-    )
-
-    print(df)
-
-
-def extract_data(path):
-    # TODO: issue, we lose 8mil out of 13mil data after dropna and removing str instances
-    data = pd.read_csv(path)
-
+def clean_data(data: pd.DataFrame):
+    """
+    Removes irrelevant or non-informative observations
+    """
     data = data.dropna()
     data = data[data["PrimaryExch"] == "N"]
     data = data[~data["DlyRet"].apply(lambda x: isinstance(x, str))]
 
+    return data
+
+
+def adjust_data_cols(data: pd.DataFrame):
+    """
+    Adjusts data columns for easier use
+    """
     data["DlyCalDt"] = pd.to_datetime(data["DlyCalDt"])
     data["year"] = data["DlyCalDt"].dt.year
     data["month"] = data["DlyCalDt"].dt.month
@@ -35,7 +24,15 @@ def extract_data(path):
     )
     data["DlyRet"] = data["DlyRet"].astype("float")
 
-    return data
+
+def extract_data(path):
+    """
+    Reads and prepares data
+    """
+    data_cleaned = clean_data(pd.read_csv(path))
+    adjust_data_cols(data_cleaned)
+
+    return data_cleaned
 
 
 def main():
@@ -44,5 +41,4 @@ def main():
 
 
 if __name__ == "__main__":
-    load_dotenv()
     main()
