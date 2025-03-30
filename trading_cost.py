@@ -30,7 +30,6 @@ def calculate_avg_spread_1y(data_one_day):
 
 
 def quoted_spread(quoted_spread):
-    print(len(quoted_spread))
     return 0.1
 
 

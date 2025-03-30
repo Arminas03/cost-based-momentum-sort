@@ -24,7 +24,6 @@ def extract_data(path):
     data = pd.read_csv(path)
 
     data = data.dropna()
-    print(data["ShareType"].unique())
     data = data[data["PrimaryExch"] == "N"]
     data = data[~data["DlyRet"].apply(lambda x: isinstance(x, str))]
 

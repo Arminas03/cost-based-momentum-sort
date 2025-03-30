@@ -4,6 +4,7 @@ import pandas as pd
 import json
 from trading_cost import quoted_spread, pick_random_day
 import numpy as np
+import itertools
 
 rng = np.random.default_rng(1)
 
@@ -19,8 +20,8 @@ def compute_return(returns):
     return final_return - 1
 
 
-def half_year_ret_sq_sum(returns):
-    return sum(returns[-6:])
+def get_half_year_daily_returns(returns):
+    return list(itertools.chain(*returns[-6:]))
 
 
 def find_momentum_split(
@@ -37,13 +38,13 @@ def find_momentum_split(
                 "quoted_spread",
                 lambda group: pick_random_day(group, rng),
             ),
-            return_squared=("DlyRet", lambda r: (r**2).sum()),
+            daily_returns=("DlyRet", lambda ret: ret.tolist()),
         )
         .groupby(["PERMNO"])
         .agg(
             returns=("returns", compute_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
-            return_squared=("return_squared", half_year_ret_sq_sum),
+            daily_returns=("daily_returns", get_half_year_daily_returns),
         )
     )
 
@@ -59,29 +60,42 @@ def find_momentum_split(
 
 def adjust_momentum_with_costs(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
     """
-    Adjusts initial momentum sort with trading costs, resorts
+    Adjusts initial momentum sort with trading costs
     """
 
     long_split, short_split = find_momentum_split(data)
 
+    new_long_split = pd.DataFrame(
+        {
+            "returns": long_split["returns"]
+            - cost_sensitivity * long_split["avg_quoted_spread"]
+        }
+    )
+    new_long_split["daily_returns"] = long_split["daily_returns"]
+
+    new_short_split = pd.DataFrame(
+        {
+            "returns": short_split["returns"]
+            - cost_sensitivity * short_split["avg_quoted_spread"]
+        }
+    )
+    new_short_split["daily_returns"] = short_split["daily_returns"]
+
     return (
         dict(
-            (
-                long_split["returns"]
-                - cost_sensitivity * long_split["avg_quoted_spread"]
-            ).nlargest(int(len(long_split) * keep_long))
+            new_long_split.nlargest(int(len(long_split) * keep_long), "returns")[
+                ["returns", "daily_returns"]
+            ].to_dict(orient="index")
         ),
         dict(
-            (
-                short_split["returns"]
-                + cost_sensitivity * short_split["avg_quoted_spread"]
-            ).nlargest(int(len(short_split) * keep_short))
+            new_short_split.nsmallest(int(len(short_split) * keep_short), "returns")[
+                ["returns", "daily_returns"]
+            ].to_dict(orient="index")
         ),
     )
 
 
 def find_splits_per_date(data):
-    # TODO: optimise
     """ "
     Finds the two-stage sorting long and short legs
     """
@@ -97,9 +111,10 @@ def find_splits_per_date(data):
                 & (data["DlyCalDt"] > date - pd.DateOffset(years=1))
             ]
         )
+
         splits[str(date.to_pydatetime().date())] = {
-            "long_split": list(long_split.keys()),
-            "short_split": list(short_split.keys()),
+            "long_split": long_split,
+            "short_split": short_split,
         }
 
     return splits
