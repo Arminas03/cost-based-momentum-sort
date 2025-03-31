@@ -39,7 +39,7 @@ def get_stock_returns(stock_data: pd.DataFrame):
     of daily returns
     """
     return (
-        stock_data.groupby(["PERMNO", "month"])[["DlyRet", "quoted_spread"]]
+        stock_data.groupby(["PERMNO", "month"])[["DlyRet", "quoted_spread", "DlyCap"]]
         .agg(
             cumulative_return=("DlyRet", compute_return),
             day_quoted_spread=(
@@ -47,12 +47,14 @@ def get_stock_returns(stock_data: pd.DataFrame):
                 lambda group: pick_random_day(group, rng),
             ),
             daily_returns=("DlyRet", lambda ret: ret.tolist()),
+            avg_market_cap=("DlyCap", "mean"),
         )
         .groupby(["PERMNO"])
         .agg(
             cumulative_return=("cumulative_return", compute_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
             daily_returns=("daily_returns", get_half_year_daily_returns),
+            avg_market_cap=("avg_market_cap", "mean"),
         )
     )
 
@@ -86,6 +88,7 @@ def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
         }
     )
     new_long_split["daily_returns"] = long_split["daily_returns"]
+    new_long_split["avg_market_cap"] = long_split["avg_market_cap"]
 
     new_short_split = pd.DataFrame(
         {
@@ -94,6 +97,7 @@ def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
         }
     )
     new_short_split["daily_returns"] = short_split["daily_returns"]
+    new_short_split["avg_market_cap"] = short_split["avg_market_cap"]
 
     return new_long_split, new_short_split
 
@@ -111,12 +115,16 @@ def get_final_splits(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
         dict(
             new_long_split.nlargest(
                 int(len(new_long_split) * keep_long), "cost_adjusted_return"
-            )[["cost_adjusted_return", "daily_returns"]].to_dict(orient="index")
+            )[["cost_adjusted_return", "daily_returns", "avg_market_cap"]].to_dict(
+                orient="index"
+            )
         ),
         dict(
             new_short_split.nsmallest(
                 int(len(new_short_split) * keep_short), "cost_adjusted_return"
-            )[["cost_adjusted_return", "daily_returns"]].to_dict(orient="index")
+            )[["cost_adjusted_return", "daily_returns", "avg_market_cap"]].to_dict(
+                orient="index"
+            )
         ),
     )
 
