@@ -129,14 +129,14 @@ def get_final_splits(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
     )
 
 
-def find_splits_per_date(data):
+def find_splits_per_date(data, start_year=2019, end_year=2024):
     """
     Finds the two-stage sorting long and short legs
     """
     splits = dict()
 
     for date in pd.date_range(
-        start=datetime(2019, 12, 31), end=datetime(2024, 12, 31), freq="ME"
+        start=datetime(start_year, 12, 31), end=datetime(end_year, 12, 31), freq="ME"
     ):
         print(date)
         long_split, short_split = get_final_splits(
@@ -156,7 +156,7 @@ def find_splits_per_date(data):
 
 def main():
     with open("final_split.json", "w") as file:
-        json.dump(find_splits_per_date(extract_data("2019-2024 v2.csv")), file)
+        json.dump(find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019), file)
 
 
 if __name__ == "__main__":
