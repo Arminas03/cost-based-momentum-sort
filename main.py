@@ -89,13 +89,17 @@ def compute_total_return_for_date(
     )
 
 
-def compute_sum_sq_ret(split_dict, weights):
+def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
     # 150 is a strong upper bound on the trading days in a 6-month period
     ret_per_day = [0] * 150
 
-    for permno, val in split_dict.items():
+    for permno, val in two_stage_date_dict["long_split"].items():
         for j in range(len(val["daily_returns"])):
-            ret_per_day[j] += weights[permno] * val["daily_returns"][j]
+            ret_per_day[j] += long_weights[permno] * val["daily_returns"][j]
+
+    for permno, val in two_stage_date_dict["short_split"].items():
+        for j in range(len(val["daily_returns"])):
+            ret_per_day[j] -= short_weights[permno] * val["daily_returns"][j]
 
     return sum([ret**2 for ret in ret_per_day])
 
@@ -126,8 +130,7 @@ def compute_portfolio_returns(weight_function, two_stage_output, cum_returns_per
         )
 
         portfolio_return_per_month[(year, month)]["sum_squared_return"] = (
-            compute_sum_sq_ret(two_stage_date_dict["long_split"], long_weights)
-            + compute_sum_sq_ret(two_stage_date_dict["short_split"], short_weights)
+            compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights)
         )
 
     return portfolio_return_per_month
@@ -146,6 +149,8 @@ def main():
     portfolio_return_per_month_value = compute_portfolio_returns(
         value_weights, two_stage_output, cum_returns_per_month
     )
+
+    print(portfolio_return_per_month_equal)
 
 
 if __name__ == "__main__":
