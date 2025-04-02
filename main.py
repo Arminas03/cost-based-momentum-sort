@@ -90,7 +90,8 @@ def compute_total_return_for_date(
 
 
 def compute_sum_sq_ret(split_dict, weights):
-    ret_per_day = [0] * len(weights)
+    # 150 is a strong upper bound on the trading days in a 6-month period
+    ret_per_day = [0] * 150
 
     for permno, val in split_dict.items():
         for j in range(len(val["daily_returns"])):
