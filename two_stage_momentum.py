@@ -148,10 +148,11 @@ def get_two_stage_momentum_splits():
     Returns and extracts to a json file final long and short splits
     for each date of the given period
     """
+    splits_per_date = find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019)
     with open("final_split.json", "w") as file:
-        json.dump(find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019), file)
+        json.dump(splits_per_date, file)
 
-    return find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019)
+    return splits_per_date
 
 
 if __name__ == "__main__":

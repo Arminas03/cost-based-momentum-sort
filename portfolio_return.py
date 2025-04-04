@@ -3,6 +3,7 @@ from utils import compute_compound_return
 import json
 from utils import extract_data
 from two_stage_momentum import get_two_stage_momentum_splits
+from garch_rv import *
 
 
 def find_returns_per_mo_stock(data: pd.DataFrame):
@@ -16,7 +17,7 @@ def find_returns_per_mo_stock(data: pd.DataFrame):
     )
 
 
-def standard_value_weights(two_stage_output_for_date):
+def get_value_weights(two_stage_output_for_date, scale_factor=1):
     """
     Returns weights for standard value-weighted portfolio
     """
@@ -35,17 +36,17 @@ def standard_value_weights(two_stage_output_for_date):
 
     return (
         {
-            permno: val["avg_market_cap"] / sum_long_caps
+            permno: scale_factor * val["avg_market_cap"] / sum_long_caps
             for permno, val in two_stage_output_for_date["long_split"].items()
         },
         {
-            permno: -val["avg_market_cap"] / sum_short_caps
+            permno: -scale_factor * val["avg_market_cap"] / sum_short_caps
             for permno, val in two_stage_output_for_date["short_split"].items()
         },
     )
 
 
-def standard_equal_weights(two_stage_output_for_date):
+def get_equal_weights(two_stage_output_for_date, scale_factor=1):
     """
     Returns weights for standard equal-weighted portfolio
     """
@@ -54,11 +55,11 @@ def standard_equal_weights(two_stage_output_for_date):
 
     return (
         {
-            permno: 1 / len_long_stocks
+            permno: scale_factor / len_long_stocks
             for permno, _ in two_stage_output_for_date["long_split"].items()
         },
         {
-            permno: -1 / len_short_stocks
+            permno: -scale_factor / len_short_stocks
             for permno, _ in two_stage_output_for_date["short_split"].items()
         },
     )
@@ -123,15 +124,80 @@ def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
     return sum([ret**2 for ret in ret_per_day])
 
 
-def compute_portfolio_returns(weight_function, two_stage_output, cum_returns_per_month):
+def adjust_weights_with_hedging(
+    is_weighing_func_equal,
+    long_weights,
+    short_weights,
+    sigma_model_rv,
+    two_stage_date_dict,
+    cum_returns_per_month,
+    sigma_target=0.12,
+):
+    sigma_hat = (
+        sigma_hat_rv(
+            compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights)
+        )
+        if sigma_model_rv
+        else sigma_hat_garch(cum_returns_per_month)
+    )
+
+    return (
+        get_equal_weights(two_stage_date_dict, sigma_target / sigma_hat)
+        if is_weighing_func_equal
+        else get_value_weights(two_stage_date_dict, sigma_target / sigma_hat)
+    )
+
+
+def get_final_weights_for_date(
+    two_stage_date_dict,
+    cum_returns_per_month,
+    is_weighing_func_equal,
+    hedged,
+    sigma_model,
+):
+    long_weights, short_weights = (
+        get_equal_weights(two_stage_date_dict)
+        if is_weighing_func_equal
+        else get_value_weights(two_stage_date_dict)
+    )
+
+    return (
+        adjust_weights_with_hedging(
+            is_weighing_func_equal,
+            long_weights,
+            short_weights,
+            sigma_model,
+            two_stage_date_dict,
+            cum_returns_per_month,
+        )
+        if hedged
+        else (long_weights, short_weights)
+    )
+
+
+def compute_portfolio_returns(
+    is_weighing_func_equal,
+    two_stage_output,
+    cum_returns_per_month,
+    hedged=False,
+    sigma_model="",
+):
     """
     Computes portfolio total monthly returns of WML
     """
     portfolio_return_per_month = dict()
 
     for date, _ in two_stage_output.items():
+        print(date)
         two_stage_date_dict = two_stage_output[date]
-        long_weights, short_weights = weight_function(two_stage_date_dict)
+
+        long_weights, short_weights = get_final_weights_for_date(
+            two_stage_date_dict,
+            cum_returns_per_month,
+            is_weighing_func_equal,
+            hedged,
+            sigma_model,
+        )
 
         year, month, _ = date.split("-")
         year, month = (
@@ -158,7 +224,7 @@ def compute_portfolio_returns(weight_function, two_stage_output, cum_returns_per
     return portfolio_return_per_month
 
 
-def get_equal_and_value_portfolios_return_per_month():
+def get_equal_and_value_portfolios_return_per_month(hedged=False, sigma_model_rv=True):
     """
     Can either take input from get_two_stage_momentum_splits directly, or
     use the json output from two_stage_momentum.py. Returns portfolio returns
@@ -172,11 +238,19 @@ def get_equal_and_value_portfolios_return_per_month():
     cum_returns_per_month = find_returns_per_mo_stock(extract_data("2019-2024 v2.csv"))
 
     return (
-        compute_portfolio_returns(
-            standard_equal_weights, two_stage_output, cum_returns_per_month
+        (
+            compute_portfolio_returns(True, two_stage_output, cum_returns_per_month)
+            if not hedged
+            else compute_portfolio_returns(
+                True, two_stage_output, cum_returns_per_month, True, sigma_model_rv
+            )
         ),
-        compute_portfolio_returns(
-            standard_value_weights, two_stage_output, cum_returns_per_month
+        (
+            compute_portfolio_returns(False, two_stage_output, cum_returns_per_month)
+            if not hedged
+            else compute_portfolio_returns(
+                False, two_stage_output, cum_returns_per_month, True, sigma_model_rv
+            )
         ),
     )
 
