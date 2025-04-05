@@ -1,6 +1,17 @@
 import pandas as pd
 
 
+def compute_compound_return(returns):
+    """
+    Computes compound return given list of simple returns
+    """
+    final_return = 1
+    for r in returns:
+        final_return *= 1 + r
+
+    return final_return - 1
+
+
 def clean_data(data: pd.DataFrame):
     """
     Removes irrelevant or non-informative observations

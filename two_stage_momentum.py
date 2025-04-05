@@ -1,22 +1,11 @@
 from datetime import datetime
-from prep_data import extract_data
+from utils import extract_data, compute_compound_return
 import pandas as pd
 import json
 import numpy as np
 import itertools
 
 rng = np.random.default_rng(1)
-
-
-def compute_return(returns):
-    """
-    Computes compound return given list of simple returns
-    """
-    final_return = 1
-    for r in returns:
-        final_return *= 1 + r
-
-    return final_return - 1
 
 
 def pick_random_day(group: pd.DataFrame, rng):
@@ -41,7 +30,7 @@ def get_stock_returns(stock_data: pd.DataFrame):
     return (
         stock_data.groupby(["PERMNO", "month"])[["DlyRet", "quoted_spread", "DlyCap"]]
         .agg(
-            cumulative_return=("DlyRet", compute_return),
+            cumulative_return=("DlyRet", compute_compound_return),
             day_quoted_spread=(
                 "quoted_spread",
                 lambda group: pick_random_day(group, rng),
@@ -51,7 +40,7 @@ def get_stock_returns(stock_data: pd.DataFrame):
         )
         .groupby(["PERMNO"])
         .agg(
-            cumulative_return=("cumulative_return", compute_return),
+            cumulative_return=("cumulative_return", compute_compound_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
             daily_returns=("daily_returns", get_half_year_daily_returns),
             avg_market_cap=("avg_market_cap", "mean"),
@@ -154,10 +143,17 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
     return splits
 
 
-def main():
+def get_two_stage_momentum_splits():
+    """
+    Returns and extracts to a json file final long and short splits
+    for each date of the given period
+    """
+    splits_per_date = find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019)
     with open("final_split.json", "w") as file:
-        json.dump(find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019), file)
+        json.dump(splits_per_date, file)
+
+    return splits_per_date
 
 
 if __name__ == "__main__":
-    main()
+    get_two_stage_momentum_splits()
