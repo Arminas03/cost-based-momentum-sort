@@ -288,7 +288,7 @@ def get_prev_quoted_spreads(two_stage_date_dict: dict):
 
 def compute_portfolio_returns(
     is_weighing_func_equal,
-    two_stage_output,
+    two_stage_output: dict,
     cum_returns_per_month,
     hedged=False,
     sigma_model="",
@@ -315,6 +315,8 @@ def compute_portfolio_returns(
         year, month = (
             (int(year), int(month) + 1) if int(month) < 12 else (int(year) + 1, 1)
         )
+        if year == 2025:
+            break
 
         portfolio_return_per_month[(year, month)] = dict()
 
