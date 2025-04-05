@@ -11,7 +11,7 @@ def find_returns_per_mo_stock(data: pd.DataFrame):
     Computes compount return for each stock for each month
     """
     return (
-        data.groupby(["year", "month", "PERMNO"])[["DlyRet"]]
+        data.groupby(["year", "month", "PERMNO"], sort=False)[["DlyRet"]]
         .agg(cumulative_return=("DlyRet", compute_compound_return))
         .to_dict(orient="index")
     )
@@ -106,6 +106,110 @@ def compute_total_return_for_date(
     )
 
 
+def get_total_cost_for_stock(
+    permno, weights, prev_weights: dict, two_stage_date_dict, prev_stock_ret
+):
+    return (
+        abs(
+            weights[permno] - (prev_weights.get(permno, 0) * (1 + prev_stock_ret))
+            if prev_weights
+            else weights[permno]
+        )
+    ) * two_stage_date_dict[permno]["avg_quoted_spread"]
+
+
+def adjust_for_prev_removed_stocks(
+    total_costs: list,
+    prev_weights: dict,
+    weights: dict,
+    cum_returns_per_month,
+    prev_quoted_spread,
+    year,
+    month,
+):
+    for permno, _ in prev_weights.items():
+        if permno not in weights.keys():
+            total_costs.append(
+                abs(
+                    prev_weights[permno]
+                    * (
+                        1
+                        + (
+                            cum_returns_per_month[(year, month, int(permno))][
+                                "cumulative_return"
+                            ]
+                            if (year, month, int(permno)) in cum_returns_per_month
+                            else 0
+                        )
+                    )
+                )
+                * prev_quoted_spread[permno]
+            )
+
+
+def compute_total_cost_for_date(
+    two_stage_date_dict,
+    cum_returns_per_month,
+    prev_long_quoted_spreads,
+    prev_short_quoted_spreads,
+    year,
+    month,
+    long_weights: dict,
+    short_weights: dict,
+    prev_long_weights,
+    prev_short_weights,
+):
+    total_costs = []
+
+    for permno, _ in long_weights.items():
+        cumulative_return = (
+            cum_returns_per_month[(year, month, int(permno))]["cumulative_return"]
+            if (year, month, int(permno)) in cum_returns_per_month
+            else 0
+        )
+        total_costs.append(
+            get_total_cost_for_stock(
+                permno,
+                long_weights,
+                prev_long_weights,
+                two_stage_date_dict["long_split"],
+                cumulative_return,
+            )
+        )
+    for permno, _ in short_weights.items():
+        total_costs.append(
+            get_total_cost_for_stock(
+                permno,
+                short_weights,
+                prev_short_weights,
+                two_stage_date_dict["short_split"],
+                cumulative_return,
+            )
+        )
+    if prev_long_weights:
+        adjust_for_prev_removed_stocks(
+            total_costs,
+            prev_long_weights,
+            long_weights,
+            cum_returns_per_month,
+            prev_long_quoted_spreads,
+            year,
+            month,
+        )
+    if prev_short_weights:
+        adjust_for_prev_removed_stocks(
+            total_costs,
+            prev_short_weights,
+            short_weights,
+            cum_returns_per_month,
+            prev_short_quoted_spreads,
+            year,
+            month,
+        )
+
+    return sum(total_costs)
+
+
 def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
     """
     Computes sum of squared returns of WML strategy for a half-year period
@@ -175,6 +279,13 @@ def get_final_weights_for_date(
     )
 
 
+def get_prev_quoted_spreads(two_stage_date_dict: dict):
+    return {
+        permno: two_stage_date_dict[permno]["avg_quoted_spread"]
+        for permno, _ in two_stage_date_dict.items()
+    }
+
+
 def compute_portfolio_returns(
     is_weighing_func_equal,
     two_stage_output,
@@ -186,9 +297,10 @@ def compute_portfolio_returns(
     Computes portfolio total monthly returns of WML
     """
     portfolio_return_per_month = dict()
+    prev_long_weights, prev_short_weights = None, None
+    prev_long_quoted_spreads, prev_short_quoted_spreads = None, None
 
     for date, _ in two_stage_output.items():
-        print(date)
         two_stage_date_dict = two_stage_output[date]
 
         long_weights, short_weights = get_final_weights_for_date(
@@ -217,8 +329,31 @@ def compute_portfolio_returns(
             )
         )
 
+        portfolio_return_per_month[(year, month)]["total_cost"] = (
+            compute_total_cost_for_date(
+                two_stage_date_dict,
+                cum_returns_per_month,
+                prev_long_quoted_spreads,
+                prev_short_quoted_spreads,
+                year,
+                month,
+                long_weights,
+                short_weights,
+                prev_long_weights,
+                prev_short_weights,
+            )
+        )
+
         portfolio_return_per_month[(year, month)]["sum_squared_return"] = (
             compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights)
+        )
+
+        prev_long_weights, prev_short_weights = long_weights, short_weights
+        prev_long_quoted_spreads = get_prev_quoted_spreads(
+            two_stage_date_dict["long_split"]
+        )
+        prev_short_quoted_spreads = get_prev_quoted_spreads(
+            two_stage_date_dict["short_split"]
         )
 
     return portfolio_return_per_month
@@ -256,4 +391,4 @@ def get_equal_and_value_portfolios_return_per_month(hedged=False, sigma_model_rv
 
 
 if __name__ == "__main__":
-    pass
+    get_equal_and_value_portfolios_return_per_month()
