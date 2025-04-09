@@ -151,7 +151,8 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
             data[
                 (data["DlyCalDt"] <= date)
                 & (data["DlyCalDt"] > date - pd.DateOffset(years=1))
-            ]
+            ],
+            cost_sensitivity=1,
         )
 
         splits[str(date.to_pydatetime().date())] = {
@@ -162,17 +163,20 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
     return splits
 
 
-def get_two_stage_momentum_splits():
+def get_two_stage_momentum_splits(start_year=2019, end_year=2024):
     """
     Returns and extracts to a json file final long and short splits
     for each date of the given period
     """
-    splits_per_date = find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019)
-    with open("final_split.json", "w") as file:
+    splits_per_date = find_splits_per_date(
+        extract_data(f"{start_year}-{end_year} v2.csv"), start_year, end_year
+    )
+    with open(f"final_split_{start_year}_{end_year}.json", "w") as file:
         json.dump(splits_per_date, file)
 
     return splits_per_date
 
 
 if __name__ == "__main__":
-    get_two_stage_momentum_splits()
+    for split in [(1969, 1985), (1985, 2005), (2005, 2024)]:
+        get_two_stage_momentum_splits(*split)

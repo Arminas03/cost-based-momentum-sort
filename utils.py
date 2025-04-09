@@ -17,7 +17,16 @@ def clean_data(data: pd.DataFrame):
     Removes irrelevant or non-informative observations
     """
     data = data.dropna()
-    data = data[data["PrimaryExch"] == "N"]
+    data = data[
+        (data["ShareType"] == "NS")
+        & (data["SecurityType"] == "EQTY")
+        & (data["SecuritySubType"] == "COM")
+        & (data["USIncFlg"] == "Y")
+        & (data["IssuerType"].isin(["ACOR", "CORP"]))
+        & (data["PrimaryExch"] == "N")
+        & (data["ConditionalType"].isin(["RW", "NW"]))
+        & (data["TradingStatusFlg"] == "A")
+    ]
     data = data[~data["DlyRet"].apply(lambda x: isinstance(x, str))]
 
     return data
@@ -40,7 +49,17 @@ def extract_data(path):
     """
     Reads and prepares data
     """
-    data_cleaned = clean_data(pd.read_csv(path))
+    data_cleaned = clean_data(pd.read_csv(path))[
+        [
+            "PERMNO",
+            "DlyCalDt",
+            "DlyRet",
+            "DlyPrc",
+            "DlyAsk",
+            "DlyBid",
+            "DlyCap",
+        ]
+    ]
     adjust_data_cols(data_cleaned)
 
     return data_cleaned

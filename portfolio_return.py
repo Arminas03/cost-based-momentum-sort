@@ -4,6 +4,7 @@ import json
 from utils import extract_data
 from two_stage_momentum import get_two_stage_momentum_splits
 from garch_rv import *
+import math
 
 
 def find_returns_per_mo_stock(data: pd.DataFrame):
@@ -110,12 +111,16 @@ def get_total_cost_for_stock(
     permno, weights, prev_weights: dict, two_stage_date_dict, prev_stock_ret
 ):
     return (
-        abs(
-            weights[permno] - (prev_weights.get(permno, 0) * (1 + prev_stock_ret))
-            if prev_weights
-            else weights[permno]
+        (
+            abs(
+                weights[permno] - (prev_weights.get(permno, 0) * (1 + prev_stock_ret))
+                if prev_weights
+                else weights[permno]
+            )
         )
-    ) * two_stage_date_dict[permno]["avg_quoted_spread"]
+        * two_stage_date_dict[permno]["avg_quoted_spread"]
+        / 2
+    )
 
 
 def adjust_for_prev_removed_stocks(
@@ -144,6 +149,7 @@ def adjust_for_prev_removed_stocks(
                     )
                 )
                 * prev_quoted_spread[permno]
+                / 2
             )
 
 
@@ -235,7 +241,7 @@ def adjust_weights_with_hedging(
     sigma_model_rv,
     two_stage_date_dict,
     cum_returns_per_month,
-    sigma_target=0.12,
+    sigma_target=0.12 / math.sqrt(12),
 ):
     sigma_hat = (
         sigma_hat_rv(
@@ -361,18 +367,22 @@ def compute_portfolio_returns(
     return portfolio_return_per_month
 
 
-def get_equal_and_value_portfolios_return_per_month(hedged=False, sigma_model_rv=True):
+def get_equal_and_value_portfolios_return_per_month(
+    start_year=2019, end_year=2024, hedged=False, sigma_model_rv=True
+):
     """
     Can either take input from get_two_stage_momentum_splits directly, or
     use the json output from two_stage_momentum.py. Returns portfolio returns
     for equal and value weighted functions
     """
-    # two_stage_output = get_two_stage_momentum_splits()
+    # two_stage_output = get_two_stage_momentum_splits(start_year, end_year)
     two_stage_output = dict()
-    with open("final_split.json") as json_file:
+    with open(f"final_split_{start_year}_{end_year}.json") as json_file:
         two_stage_output = json.load(json_file)
 
-    cum_returns_per_month = find_returns_per_mo_stock(extract_data("2019-2024 v2.csv"))
+    cum_returns_per_month = find_returns_per_mo_stock(
+        extract_data(f"{start_year}-{end_year} v2.csv")
+    )
 
     return (
         (
