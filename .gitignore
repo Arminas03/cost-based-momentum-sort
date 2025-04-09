@@ -4,3 +4,7 @@ venv
 *.csv
 __pycache__
 *.json
+lambda_1_res
+lambda_6_res
+lambda_12_res
+lambda_0_res

@@ -5,6 +5,7 @@ import json
 import numpy as np
 import itertools
 
+
 rng = np.random.default_rng(1)
 
 
@@ -28,7 +29,9 @@ def get_stock_returns(stock_data: pd.DataFrame):
     of daily returns
     """
     return (
-        stock_data.groupby(["PERMNO", "month"])[["DlyRet", "quoted_spread", "DlyCap"]]
+        stock_data.groupby(["PERMNO", "month"], sort=False)[
+            ["DlyRet", "quoted_spread", "DlyCap"]
+        ]
         .agg(
             cumulative_return=("DlyRet", compute_compound_return),
             day_quoted_spread=(
@@ -38,7 +41,7 @@ def get_stock_returns(stock_data: pd.DataFrame):
             daily_returns=("DlyRet", lambda ret: ret.tolist()),
             avg_market_cap=("DlyCap", "mean"),
         )
-        .groupby(["PERMNO"])
+        .groupby(["PERMNO"], sort=False)
         .agg(
             cumulative_return=("cumulative_return", compute_compound_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
@@ -78,6 +81,7 @@ def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
     )
     new_long_split["daily_returns"] = long_split["daily_returns"]
     new_long_split["avg_market_cap"] = long_split["avg_market_cap"]
+    new_long_split["avg_quoted_spread"] = long_split["avg_quoted_spread"]
 
     new_short_split = pd.DataFrame(
         {
@@ -87,6 +91,7 @@ def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
     )
     new_short_split["daily_returns"] = short_split["daily_returns"]
     new_short_split["avg_market_cap"] = short_split["avg_market_cap"]
+    new_short_split["avg_quoted_spread"] = short_split["avg_quoted_spread"]
 
     return new_long_split, new_short_split
 
@@ -104,14 +109,28 @@ def get_final_splits(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
         dict(
             new_long_split.nlargest(
                 int(len(new_long_split) * keep_long), "cost_adjusted_return"
-            )[["cost_adjusted_return", "daily_returns", "avg_market_cap"]].to_dict(
+            )[
+                [
+                    "cost_adjusted_return",
+                    "daily_returns",
+                    "avg_market_cap",
+                    "avg_quoted_spread",
+                ]
+            ].to_dict(
                 orient="index"
             )
         ),
         dict(
             new_short_split.nsmallest(
                 int(len(new_short_split) * keep_short), "cost_adjusted_return"
-            )[["cost_adjusted_return", "daily_returns", "avg_market_cap"]].to_dict(
+            )[
+                [
+                    "cost_adjusted_return",
+                    "daily_returns",
+                    "avg_market_cap",
+                    "avg_quoted_spread",
+                ]
+            ].to_dict(
                 orient="index"
             )
         ),
@@ -132,7 +151,8 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
             data[
                 (data["DlyCalDt"] <= date)
                 & (data["DlyCalDt"] > date - pd.DateOffset(years=1))
-            ]
+            ],
+            cost_sensitivity=1,
         )
 
         splits[str(date.to_pydatetime().date())] = {
@@ -143,17 +163,20 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
     return splits
 
 
-def get_two_stage_momentum_splits():
+def get_two_stage_momentum_splits(start_year=2019, end_year=2024):
     """
     Returns and extracts to a json file final long and short splits
     for each date of the given period
     """
-    splits_per_date = find_splits_per_date(extract_data("2019-2024 v2.csv"), 2019)
-    with open("final_split.json", "w") as file:
+    splits_per_date = find_splits_per_date(
+        extract_data(f"{start_year}-{end_year} v2.csv"), start_year, end_year
+    )
+    with open(f"final_split_{start_year}_{end_year}.json", "w") as file:
         json.dump(splits_per_date, file)
 
     return splits_per_date
 
 
 if __name__ == "__main__":
-    get_two_stage_momentum_splits()
+    for split in [(1969, 1985), (1985, 2005), (2005, 2024)]:
+        get_two_stage_momentum_splits(*split)
