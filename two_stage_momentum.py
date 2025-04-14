@@ -16,11 +16,11 @@ def pick_random_day(group: pd.DataFrame, rng):
     return group[-15:].sample(n=1, random_state=rng)
 
 
-def get_half_year_daily_returns(returns):
+def get_year_daily_returns(returns):
     """
-    Returns a list of daily returns for the last six months
+    Returns a list of daily returns for the last year
     """
-    return list(itertools.chain(*returns[-6:]))
+    return list(itertools.chain(*returns))
 
 
 def get_stock_returns(stock_data: pd.DataFrame):
@@ -45,7 +45,7 @@ def get_stock_returns(stock_data: pd.DataFrame):
         .agg(
             cumulative_return=("cumulative_return", compute_compound_return),
             avg_quoted_spread=("day_quoted_spread", "mean"),
-            daily_returns=("daily_returns", get_half_year_daily_returns),
+            daily_returns=("daily_returns", get_year_daily_returns),
             avg_market_cap=("avg_market_cap", "mean"),
         )
     )
@@ -152,7 +152,7 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
                 (data["DlyCalDt"] <= date)
                 & (data["DlyCalDt"] > date - pd.DateOffset(years=1))
             ],
-            cost_sensitivity=1,
+            cost_sensitivity=0,
         )
 
         splits[str(date.to_pydatetime().date())] = {
@@ -178,5 +178,5 @@ def get_two_stage_momentum_splits(start_year=2019, end_year=2024):
 
 
 if __name__ == "__main__":
-    for split in [(1969, 1985), (1985, 2005), (2005, 2024)]:
+    for split in [(1993, 2005), (2005, 2024)]:
         get_two_stage_momentum_splits(*split)

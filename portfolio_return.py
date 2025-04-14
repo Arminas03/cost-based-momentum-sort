@@ -7,6 +7,11 @@ from garch_rv import *
 import math
 
 
+garch_predictions = dict()
+rv_predictions = dict()
+daily_returns_list = []
+
+
 def find_returns_per_mo_stock(data: pd.DataFrame):
     """
     Computes compount return for each stock for each month
@@ -66,7 +71,7 @@ def get_equal_weights(two_stage_output_for_date, scale_factor=1):
     )
 
 
-def compute_return_for_split(split, cum_returns_per_month, year, month, weights):
+def compute_return_for_split(split: dict, cum_returns_per_month, year, month, weights):
     """
     compute cumulative return for a given split
     """
@@ -220,8 +225,23 @@ def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
     """
     Computes sum of squared returns of WML strategy for a half-year period
     """
-    # 150 is a strong upper bound on the trading days in a 6-month period
-    ret_per_day = [0] * 150
+    # 125 is the typical number of trading days in a 6-month period
+    ret_per_day = [0] * 125
+
+    for permno, val in two_stage_date_dict["long_split"].items():
+        for j in range(len(val["daily_returns"][-125:])):
+            ret_per_day[j] += long_weights[permno] * val["daily_returns"][j]
+
+    for permno, val in two_stage_date_dict["short_split"].items():
+        for j in range(len(val["daily_returns"][-125:])):
+            ret_per_day[j] -= short_weights[permno] * val["daily_returns"][j]
+
+    return sum([ret**2 for ret in ret_per_day])
+
+
+def update_daily_returns_list(two_stage_date_dict, long_weights, short_weights):
+    ret_per_day = [0] * 260
+    global daily_returns_list
 
     for permno, val in two_stage_date_dict["long_split"].items():
         for j in range(len(val["daily_returns"])):
@@ -231,54 +251,64 @@ def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
         for j in range(len(val["daily_returns"])):
             ret_per_day[j] -= short_weights[permno] * val["daily_returns"][j]
 
-    return sum([ret**2 for ret in ret_per_day])
+    while ret_per_day and ret_per_day[-1] == 0:
+        ret_per_day.pop()
+
+    daily_returns_list += ret_per_day
 
 
 def adjust_weights_with_hedging(
-    is_weighing_func_equal,
+    is_weighting_func_equal,
     long_weights,
     short_weights,
     sigma_model_rv,
     two_stage_date_dict,
-    cum_returns_per_month,
+    date,
     sigma_target=0.12 / math.sqrt(12),
 ):
+    global daily_returns_list
+    update_daily_returns_list(two_stage_date_dict, long_weights, short_weights)
     sigma_hat = (
         sigma_hat_rv(
             compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights)
         )
         if sigma_model_rv
-        else sigma_hat_garch(cum_returns_per_month)
+        else sigma_hat_garch(daily_returns_list)
     )
+
+    if sigma_model_rv:
+        rv_predictions[date] = sigma_hat
+    else:
+        garch_predictions[date] = sigma_hat
 
     return (
         get_equal_weights(two_stage_date_dict, sigma_target / sigma_hat)
-        if is_weighing_func_equal
+        if is_weighting_func_equal
         else get_value_weights(two_stage_date_dict, sigma_target / sigma_hat)
     )
 
 
 def get_final_weights_for_date(
     two_stage_date_dict,
-    cum_returns_per_month,
-    is_weighing_func_equal,
+    is_weighting_func_equal,
     hedged,
-    sigma_model,
+    sigma_model_rv,
+    date,
 ):
     long_weights, short_weights = (
         get_equal_weights(two_stage_date_dict)
-        if is_weighing_func_equal
+        if is_weighting_func_equal
         else get_value_weights(two_stage_date_dict)
     )
 
     return (
         adjust_weights_with_hedging(
-            is_weighing_func_equal,
+            is_weighting_func_equal,
             long_weights,
             short_weights,
-            sigma_model,
+            sigma_model_rv,
             two_stage_date_dict,
-            cum_returns_per_month,
+            date,
         )
         if hedged
         else (long_weights, short_weights)
@@ -293,11 +323,11 @@ def get_prev_quoted_spreads(two_stage_date_dict: dict):
 
 
 def compute_portfolio_returns(
-    is_weighing_func_equal,
+    is_weighting_func_equal,
     two_stage_output: dict,
     cum_returns_per_month,
     hedged=False,
-    sigma_model="",
+    sigma_model_rv=True,
 ):
     """
     Computes portfolio total monthly returns of WML
@@ -311,18 +341,16 @@ def compute_portfolio_returns(
 
         long_weights, short_weights = get_final_weights_for_date(
             two_stage_date_dict,
-            cum_returns_per_month,
-            is_weighing_func_equal,
+            is_weighting_func_equal,
             hedged,
-            sigma_model,
+            sigma_model_rv,
+            date,
         )
 
         year, month, _ = date.split("-")
         year, month = (
             (int(year), int(month) + 1) if int(month) < 12 else (int(year) + 1, 1)
         )
-        if year == 2025:
-            break
 
         portfolio_return_per_month[(year, month)] = dict()
 
@@ -364,6 +392,10 @@ def compute_portfolio_returns(
             two_stage_date_dict["short_split"]
         )
 
+    with open(
+        f"vol_predictions_{"RV" if sigma_model_rv else "GARCH"}.json", "w"
+    ) as file:
+        json.dump(rv_predictions if sigma_model_rv else garch_predictions, file)
     return portfolio_return_per_month
 
 
@@ -386,14 +418,18 @@ def get_equal_and_value_portfolios_return_per_month(
 
     return (
         (
-            compute_portfolio_returns(True, two_stage_output, cum_returns_per_month)
+            compute_portfolio_returns(
+                True, two_stage_output, cum_returns_per_month, sigma_model_rv
+            )
             if not hedged
             else compute_portfolio_returns(
                 True, two_stage_output, cum_returns_per_month, True, sigma_model_rv
             )
         ),
         (
-            compute_portfolio_returns(False, two_stage_output, cum_returns_per_month)
+            compute_portfolio_returns(
+                False, two_stage_output, cum_returns_per_month, sigma_model_rv
+            )
             if not hedged
             else compute_portfolio_returns(
                 False, two_stage_output, cum_returns_per_month, True, sigma_model_rv
@@ -403,4 +439,6 @@ def get_equal_and_value_portfolios_return_per_month(
 
 
 if __name__ == "__main__":
-    get_equal_and_value_portfolios_return_per_month()
+    get_equal_and_value_portfolios_return_per_month(
+        start_year=1993, end_year=2005, hedged=True, sigma_model_rv=True
+    )

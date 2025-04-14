@@ -1,6 +1,11 @@
 import pandas as pd
 
 
+STRATEGIES = ["standard", "hedged_rv", "hedged_garch"]
+WEIGHTINGS = ["equal", "value"]
+LAMBDAS = [0, 1, 6, 12]
+
+
 def compute_compound_return(returns):
     """
     Computes compound return given list of simple returns
@@ -45,7 +50,7 @@ def adjust_data_cols(data: pd.DataFrame):
     data["DlyRet"] = data["DlyRet"].astype("float")
 
 
-def extract_data(path):
+def extract_data(path: str) -> pd.DataFrame:
     """
     Reads and prepares data
     """

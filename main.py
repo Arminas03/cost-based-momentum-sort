@@ -4,12 +4,12 @@ import pandas as pd
 
 def main():
     model_names = {
-        (False, False): "standard",
-        (True, True): "hedged_rv",
+        # (False, False): "standard",
+        # (True, True): "hedged_rv",
         (True, False): "hedged_garch",
     }
 
-    for start_year, end_year in [(1969, 1985), (1985, 2005), (2005, 2024)]:
+    for start_year, end_year in [(1993, 2005), (2005, 2024)]:
         for hedged, sigma_model_rv in model_names:
             returns_equal, returns_value = (
                 get_equal_and_value_portfolios_return_per_month(
