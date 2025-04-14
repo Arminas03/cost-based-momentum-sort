@@ -4,9 +4,9 @@ import pandas as pd
 
 def main():
     model_names = {
-        # (False, False): "standard",
+        (False, False): "standard",
         # (True, True): "hedged_rv",
-        (True, False): "hedged_garch",
+        # (True, False): "hedged_garch",
     }
 
     for start_year, end_year in [(1993, 2005), (2005, 2024)]:

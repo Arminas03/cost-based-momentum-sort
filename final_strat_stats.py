@@ -2,21 +2,26 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 import json
+from utils import WEIGHTINGS, HEDGING
 
 
-STRATEGY_COMPOSITIONS = [
-    (strat, weight)
-    for strat in ["standard", "hedged_rv", "hedged_garch"]
-    for weight in ["equal", "value"]
-]
+STRATEGY_COMPOSITIONS = [(strat, weight) for strat in HEDGING for weight in WEIGHTINGS]
 
 
-def evaluate_strategy_performance(lbda, strategy, weight):
+def evaluate_strategy_performance(
+    lbda: int, strategy: str, weight: str, low_cost_universe: bool = False
+) -> tuple:
     gross_return_list, net_return_list, cost_list = [], [], []
 
     for start_year, end_year in [(1993, 2005), (2005, 2024)]:
-        strategy_results = pd.read_csv(
-            f"lambda_{lbda}_res/ret_cost_{strategy}_{weight}_{start_year}_{end_year}.csv"
+        strategy_results = (
+            pd.read_csv(
+                f"lambda_{lbda}_res/ret_cost_{strategy}_{weight}_{start_year}_{end_year}.csv"
+            )
+            if not low_cost_universe
+            else pd.read_csv(
+                f"low_cost_universe_res/ret_cost_{strategy}_{weight}_{start_year}_{end_year}.csv"
+            )
         )
 
         if strategy_results.iloc[-1]["year"] > end_year:
@@ -67,6 +72,27 @@ def main():
                 gross_returns
             )
             time_series_results[(lbda, strategy, weight, "costs")] = costs
+
+    for weight in WEIGHTINGS:
+        (
+            strat_return,
+            strat_std,
+            strat_net_return,
+            strat_net_std,
+            gross_returns,
+            costs,
+        ) = evaluate_strategy_performance(0, "standard", weight)
+
+        strategy_agg_results["low_cost_universe"][weight] = {
+            "monthly_gross_return": strat_return,
+            "monthly_gross_return_std": strat_std,
+            "monthly_net_return": strat_net_return,
+            "monthly_net_return_std": strat_net_std,
+        }
+        time_series_results[("low_cost_universe", strategy, weight, "gross_return")] = (
+            gross_returns
+        )
+        time_series_results[("low_cost_universe", strategy, weight, "costs")] = costs
 
     with open("strategy_performances.json", "w") as file:
         json.dump(strategy_agg_results, file)

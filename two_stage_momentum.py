@@ -9,21 +9,21 @@ import itertools
 rng = np.random.default_rng(1)
 
 
-def pick_random_day(group: pd.DataFrame, rng):
+def pick_random_day(group: pd.Series) -> float:
     """
     Picks random day from 15th until the end of the month
     """
     return group[-15:].sample(n=1, random_state=rng)
 
 
-def get_year_daily_returns(returns):
+def get_year_daily_returns(returns: pd.Series) -> list:
     """
     Returns a list of daily returns for the last year
     """
     return list(itertools.chain(*returns))
 
 
-def get_stock_returns(stock_data: pd.DataFrame):
+def get_stock_returns(stock_data: pd.DataFrame) -> dict:
     """
     Gets cumulative stock returns for each permno together with a list
     of daily returns
@@ -36,7 +36,7 @@ def get_stock_returns(stock_data: pd.DataFrame):
             cumulative_return=("DlyRet", compute_compound_return),
             day_quoted_spread=(
                 "quoted_spread",
-                lambda group: pick_random_day(group, rng),
+                lambda group: pick_random_day(group),
             ),
             daily_returns=("DlyRet", lambda ret: ret.tolist()),
             avg_market_cap=("DlyCap", "mean"),
@@ -51,9 +51,25 @@ def get_stock_returns(stock_data: pd.DataFrame):
     )
 
 
+def get_low_cost_stocks(stock_data: pd.DataFrame) -> set:
+    aggregated_data = get_stock_returns(stock_data)
+
+    aggregated_data["size_decile"] = (
+        pd.qcut(aggregated_data["avg_market_cap"], 10, labels=False) + 1
+    )
+
+    filtered_df = aggregated_data.groupby("size_decile", group_keys=False).apply(
+        lambda group: group.nsmallest(max(1, int(len(group) / 3)), "avg_quoted_spread")
+    )
+
+    return set(filtered_df.index.to_list())
+
+
 def find_momentum_split(
-    stock_data: pd.DataFrame, long_split_proportion=0.2, short_split_proportion=0.2
-):
+    stock_data: pd.DataFrame,
+    long_split_proportion: float = 0.2,
+    short_split_proportion: float = 0.2,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Finds standard momentum strategy long and short legs
     """
@@ -69,7 +85,9 @@ def find_momentum_split(
     )
 
 
-def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
+def adjust_momentum_with_costs(
+    long_split: pd.DataFrame, short_split: pd.DataFrame, cost_sensitivity: float
+) -> tuple[pd.DataFrame, pd.DateFrame]:
     """
     Calculates cost-adjusted returns for each split
     """
@@ -96,7 +114,12 @@ def adjust_momentum_with_costs(long_split, short_split, cost_sensitivity):
     return new_long_split, new_short_split
 
 
-def get_final_splits(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
+def get_final_splits(
+    data: pd.DataFrame,
+    cost_sensitivity: int,
+    keep_long: float = 0.5,
+    keep_short: float = 0.5,
+) -> tuple[dict, dict]:
     """
     Gets final long and short legs based on trading costs
     and input parameters
@@ -137,11 +160,17 @@ def get_final_splits(data, cost_sensitivity=1, keep_long=0.5, keep_short=0.5):
     )
 
 
-def find_splits_per_date(data, start_year=2019, end_year=2024):
+def find_splits_per_date(
+    data: pd.DataFrame, start_year: int, end_year: int, low_cost_universe: bool
+) -> dict:
     """
     Finds the two-stage sorting long and short legs
     """
     splits = dict()
+
+    if low_cost_universe:
+        low_cost_stocks = get_low_cost_stocks(data)
+        data = data[data["PERMNO"].isin(low_cost_stocks)]
 
     for date in pd.date_range(
         start=datetime(start_year, 12, 31), end=datetime(end_year, 12, 31), freq="ME"
@@ -163,13 +192,18 @@ def find_splits_per_date(data, start_year=2019, end_year=2024):
     return splits
 
 
-def get_two_stage_momentum_splits(start_year=2019, end_year=2024):
+def get_two_stage_momentum_splits(
+    start_year: int = 2019, end_year: int = 2024, low_cost_universe: bool = False
+) -> dict:
     """
     Returns and extracts to a json file final long and short splits
     for each date of the given period
     """
     splits_per_date = find_splits_per_date(
-        extract_data(f"{start_year}-{end_year} v2.csv"), start_year, end_year
+        extract_data(f"{start_year}-{end_year} v2.csv"),
+        start_year,
+        end_year,
+        low_cost_universe,
     )
     with open(f"final_split_{start_year}_{end_year}.json", "w") as file:
         json.dump(splits_per_date, file)
@@ -179,4 +213,4 @@ def get_two_stage_momentum_splits(start_year=2019, end_year=2024):
 
 if __name__ == "__main__":
     for split in [(1993, 2005), (2005, 2024)]:
-        get_two_stage_momentum_splits(*split)
+        get_two_stage_momentum_splits(*split, True)

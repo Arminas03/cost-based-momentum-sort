@@ -12,7 +12,7 @@ rv_predictions = dict()
 daily_returns_list = []
 
 
-def find_returns_per_mo_stock(data: pd.DataFrame):
+def find_returns_per_mo_stock(data: pd.DataFrame) -> dict:
     """
     Computes compount return for each stock for each month
     """
@@ -23,7 +23,9 @@ def find_returns_per_mo_stock(data: pd.DataFrame):
     )
 
 
-def get_value_weights(two_stage_output_for_date, scale_factor=1):
+def get_value_weights(
+    two_stage_output_for_date: dict, scale_factor: float = 1
+) -> tuple[dict, dict]:
     """
     Returns weights for standard value-weighted portfolio
     """
@@ -52,7 +54,9 @@ def get_value_weights(two_stage_output_for_date, scale_factor=1):
     )
 
 
-def get_equal_weights(two_stage_output_for_date, scale_factor=1):
+def get_equal_weights(
+    two_stage_output_for_date: dict, scale_factor: float = 1
+) -> tuple[dict, dict]:
     """
     Returns weights for standard equal-weighted portfolio
     """
@@ -71,11 +75,12 @@ def get_equal_weights(two_stage_output_for_date, scale_factor=1):
     )
 
 
-def compute_return_for_split(split: dict, cum_returns_per_month, year, month, weights):
+def compute_return_for_split(
+    split: dict, cum_returns_per_month: dict, year: int, month: int, weights: dict
+) -> float:
     """
     compute cumulative return for a given split
     """
-    # TODO: fix delisted stock returns
     total_balance = 0
 
     for permno, _ in split.items():
@@ -92,7 +97,12 @@ def compute_return_for_split(split: dict, cum_returns_per_month, year, month, we
 
 
 def compute_total_return_for_date(
-    two_stage_date_dict, cum_returns_per_month, year, month, long_weights, short_weights
+    two_stage_date_dict: dict,
+    cum_returns_per_month: dict,
+    year: int,
+    month: int,
+    long_weights: dict,
+    short_weights: dict,
 ):
     """
     Computes total return for each split and combines them
@@ -113,8 +123,12 @@ def compute_total_return_for_date(
 
 
 def get_total_cost_for_stock(
-    permno, weights, prev_weights: dict, two_stage_date_dict, prev_stock_ret
-):
+    permno: str,
+    weights: dict,
+    prev_weights: dict,
+    two_stage_date_dict: dict,
+    prev_stock_ret: dict,
+) -> float:
     return (
         (
             abs(
@@ -132,11 +146,11 @@ def adjust_for_prev_removed_stocks(
     total_costs: list,
     prev_weights: dict,
     weights: dict,
-    cum_returns_per_month,
-    prev_quoted_spread,
-    year,
-    month,
-):
+    cum_returns_per_month: dict,
+    prev_quoted_spread: dict,
+    year: int,
+    month: int,
+) -> None:
     for permno, _ in prev_weights.items():
         if permno not in weights.keys():
             total_costs.append(
@@ -159,17 +173,17 @@ def adjust_for_prev_removed_stocks(
 
 
 def compute_total_cost_for_date(
-    two_stage_date_dict,
-    cum_returns_per_month,
-    prev_long_quoted_spreads,
-    prev_short_quoted_spreads,
-    year,
-    month,
+    two_stage_date_dict: dict,
+    cum_returns_per_month: dict,
+    prev_long_quoted_spreads: dict,
+    prev_short_quoted_spreads: dict,
+    year: int,
+    month: int,
     long_weights: dict,
     short_weights: dict,
-    prev_long_weights,
-    prev_short_weights,
-):
+    prev_long_weights: dict,
+    prev_short_weights: dict,
+) -> float:
     total_costs = []
 
     for permno, _ in long_weights.items():
@@ -221,7 +235,9 @@ def compute_total_cost_for_date(
     return sum(total_costs)
 
 
-def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
+def compute_sum_sq_ret(
+    two_stage_date_dict: dict, long_weights: dict, short_weights: dict
+) -> float:
     """
     Computes sum of squared returns of WML strategy for a half-year period
     """
@@ -239,7 +255,9 @@ def compute_sum_sq_ret(two_stage_date_dict, long_weights, short_weights):
     return sum([ret**2 for ret in ret_per_day])
 
 
-def update_daily_returns_list(two_stage_date_dict, long_weights, short_weights):
+def update_daily_returns_list(
+    two_stage_date_dict: dict, long_weights: dict, short_weights: dict
+) -> None:
     ret_per_day = [0] * 260
     global daily_returns_list
 
@@ -258,14 +276,14 @@ def update_daily_returns_list(two_stage_date_dict, long_weights, short_weights):
 
 
 def adjust_weights_with_hedging(
-    is_weighting_func_equal,
-    long_weights,
-    short_weights,
-    sigma_model_rv,
-    two_stage_date_dict,
-    date,
-    sigma_target=0.12 / math.sqrt(12),
-):
+    is_weighting_func_equal: bool,
+    long_weights: dict,
+    short_weights: dict,
+    sigma_model_rv: bool,
+    two_stage_date_dict: dict,
+    date: str,
+    sigma_target: float = 0.12 / math.sqrt(12),
+) -> tuple[dict, dict]:
     global daily_returns_list
     update_daily_returns_list(two_stage_date_dict, long_weights, short_weights)
     sigma_hat = (
@@ -289,12 +307,12 @@ def adjust_weights_with_hedging(
 
 
 def get_final_weights_for_date(
-    two_stage_date_dict,
-    is_weighting_func_equal,
-    hedged,
-    sigma_model_rv,
-    date,
-):
+    two_stage_date_dict: dict,
+    is_weighting_func_equal: bool,
+    hedged: bool,
+    sigma_model_rv: bool,
+    date: str,
+) -> tuple[dict, dict]:
     long_weights, short_weights = (
         get_equal_weights(two_stage_date_dict)
         if is_weighting_func_equal
@@ -315,7 +333,7 @@ def get_final_weights_for_date(
     )
 
 
-def get_prev_quoted_spreads(two_stage_date_dict: dict):
+def get_prev_quoted_spreads(two_stage_date_dict: dict) -> dict:
     return {
         permno: two_stage_date_dict[permno]["avg_quoted_spread"]
         for permno, _ in two_stage_date_dict.items()
@@ -323,12 +341,12 @@ def get_prev_quoted_spreads(two_stage_date_dict: dict):
 
 
 def compute_portfolio_returns(
-    is_weighting_func_equal,
+    is_weighting_func_equal: bool,
     two_stage_output: dict,
-    cum_returns_per_month,
-    hedged=False,
-    sigma_model_rv=True,
-):
+    cum_returns_per_month: dict,
+    hedged: bool = False,
+    sigma_model_rv: bool = True,
+) -> dict:
     """
     Computes portfolio total monthly returns of WML
     """
@@ -400,8 +418,11 @@ def compute_portfolio_returns(
 
 
 def get_equal_and_value_portfolios_return_per_month(
-    start_year=2019, end_year=2024, hedged=False, sigma_model_rv=True
-):
+    start_year: int = 2019,
+    end_year: int = 2024,
+    hedged: bool = False,
+    sigma_model_rv: bool = True,
+) -> tuple[dict, dict]:
     """
     Can either take input from get_two_stage_momentum_splits directly, or
     use the json output from two_stage_momentum.py. Returns portfolio returns
