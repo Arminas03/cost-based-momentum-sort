@@ -1,7 +1,13 @@
 import pandas as pd
+from typing import Union
 
 
-def compute_compound_return(returns):
+HEDGING = ["standard", "hedged_rv", "hedged_garch"]
+WEIGHTINGS = ["equal", "value"]
+LAMBDAS = ["0", "1", "6", "12"]
+
+
+def compute_compound_return(returns: Union[list, pd.Series]) -> float:
     """
     Computes compound return given list of simple returns
     """
@@ -12,7 +18,7 @@ def compute_compound_return(returns):
     return final_return - 1
 
 
-def clean_data(data: pd.DataFrame):
+def clean_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Removes irrelevant or non-informative observations
     """
@@ -32,7 +38,7 @@ def clean_data(data: pd.DataFrame):
     return data
 
 
-def adjust_data_cols(data: pd.DataFrame):
+def adjust_data_cols(data: pd.DataFrame) -> None:
     """
     Adjusts data columns for easier use
     """
@@ -45,7 +51,7 @@ def adjust_data_cols(data: pd.DataFrame):
     data["DlyRet"] = data["DlyRet"].astype("float")
 
 
-def extract_data(path):
+def extract_data(path: str) -> pd.DataFrame:
     """
     Reads and prepares data
     """

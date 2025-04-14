@@ -1,10 +1,14 @@
+#General
 myenv
 venv
 .env
 *.csv
 __pycache__
 *.json
+
+#Folders
 lambda_1_res
 lambda_6_res
 lambda_12_res
 lambda_0_res
+low_cost_universe_res
