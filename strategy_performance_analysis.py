@@ -51,14 +51,14 @@ def perform_significance_test(
 
 
 def combination_analysis(
-    strategy_performances: dict, strategy: str, weighting: str
+    strategy_performances: dict, strategy: str, weighting: str, evaluate_against: str
 ) -> None:
     print("=========================================================")
     print(f"{strategy}, {weighting}")
     print("---------------------------------------------")
     combination_dict = {
         lbda: strategy_performances[lbda][strategy][weighting] for lbda in LAMBDAS
-    }
+    } | {"low_cost_universe": strategy_performances["low_cost_universe"][weighting]}
 
     for lbda in LAMBDAS[1:]:
         print("......................................")
@@ -67,21 +67,23 @@ def combination_analysis(
         print("Gross:")
         print(
             perform_significance_test(
-                combination_dict[lbda], combination_dict["0"], "gross"
+                combination_dict[lbda], combination_dict[evaluate_against], "gross"
             )
         )
         print("Net:")
         print(
             perform_significance_test(
-                combination_dict[lbda], combination_dict["0"], "net"
+                combination_dict[lbda], combination_dict[evaluate_against], "net"
             )
         )
 
 
 def outperformance_analysis(strategy_performances: dict):
-    for strategy in HEDGING:
+    for strategy in ["standard"]:
         for weighting in WEIGHTINGS:
-            combination_analysis(strategy_performances, strategy, weighting)
+            combination_analysis(
+                strategy_performances, strategy, weighting, "low_cost_universe"
+            )
 
 
 def main():

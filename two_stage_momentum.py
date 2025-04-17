@@ -160,17 +160,11 @@ def get_final_splits(
     )
 
 
-def find_splits_per_date(
-    data: pd.DataFrame, start_year: int, end_year: int, low_cost_universe: bool
-) -> dict:
+def find_splits_per_date(data: pd.DataFrame, start_year: int, end_year: int) -> dict:
     """
     Finds the two-stage sorting long and short legs
     """
     splits = dict()
-
-    if low_cost_universe:
-        low_cost_stocks = get_low_cost_stocks(data)
-        data = data[data["PERMNO"].isin(low_cost_stocks)]
 
     for date in pd.date_range(
         start=datetime(start_year, 12, 31), end=datetime(end_year, 12, 31), freq="ME"
@@ -203,7 +197,6 @@ def get_two_stage_momentum_splits(
         extract_data(f"{start_year}-{end_year} v2.csv"),
         start_year,
         end_year,
-        low_cost_universe,
     )
     with open(f"final_split_{start_year}_{end_year}.json", "w") as file:
         json.dump(splits_per_date, file)
