@@ -81,7 +81,7 @@ def main():
             strat_net_std,
             gross_returns,
             costs,
-        ) = evaluate_strategy_performance(0, "standard", weight)
+        ) = evaluate_strategy_performance(0, "standard", weight, True)
 
         strategy_agg_results["low_cost_universe"][weight] = {
             "monthly_gross_return": strat_return,
@@ -89,10 +89,10 @@ def main():
             "monthly_net_return": strat_net_return,
             "monthly_net_return_std": strat_net_std,
         }
-        time_series_results[("low_cost_universe", strategy, weight, "gross_return")] = (
-            gross_returns
-        )
-        time_series_results[("low_cost_universe", strategy, weight, "costs")] = costs
+        time_series_results[
+            ("low_cost_universe", "standard", weight, "gross_return")
+        ] = gross_returns
+        time_series_results[("low_cost_universe", "standard", weight, "costs")] = costs
 
     with open("strategy_performances.json", "w") as file:
         json.dump(strategy_agg_results, file)
