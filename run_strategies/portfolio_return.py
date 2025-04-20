@@ -2,8 +2,7 @@ import pandas as pd
 from utils import compute_compound_return
 import json
 from utils import extract_data
-from two_stage_momentum import get_two_stage_momentum_splits
-from garch_rv import *
+from run_strategies.garch_rv import *
 import math
 
 
