@@ -1,4 +1,3 @@
-import pandas as pd
 import json
 import math
 from utils import HEDGING, WEIGHTINGS, LAMBDAS
@@ -12,6 +11,10 @@ def get_test_statistic(
     strategy2_var: float,
     num_periods: int = 360,
 ) -> float:
+    """
+    Returns the test statistic for the test of
+    significant outperformance
+    """
     return (
         math.sqrt(num_periods)
         * (strategy1_mean - strategy2_mean)
@@ -20,6 +23,9 @@ def get_test_statistic(
 
 
 def get_test_results(test_statistic: float, significance_level: float = 0.05) -> dict:
+    """
+    Returns the test result
+    """
     p_value = 2 * (1 - stats.norm.cdf(abs(test_statistic)))
     return {
         "test_statistic": test_statistic,
@@ -31,6 +37,9 @@ def get_test_results(test_statistic: float, significance_level: float = 0.05) ->
 def perform_significance_test(
     two_stage_lbda_results: dict, lbda_zero_results: dict, ret_type: str
 ) -> str:
+    """
+    Performs significance test (derived in the paper)
+    """
     mean_ret_string = f"monthly_{ret_type}_return"
     std_ret_string = f"monthly_{ret_type}_return_std"
 
@@ -53,12 +62,15 @@ def perform_significance_test(
 def combination_analysis(
     strategy_performances: dict, strategy: str, weighting: str, evaluate_against: str
 ) -> None:
+    """
+    Analyses given strategy, weighting combination
+    """
     print("=========================================================")
     print(f"{strategy}, {weighting}")
     print("---------------------------------------------")
     combination_dict = {
         lbda: strategy_performances[lbda][strategy][weighting] for lbda in LAMBDAS
-    } | {"low_cost_universe": strategy_performances["low_cost_universe"][weighting]}
+    }
 
     for lbda in LAMBDAS[1:]:
         print("......................................")
@@ -79,17 +91,15 @@ def combination_analysis(
 
 
 def outperformance_analysis(strategy_performances: dict):
-    for strategy in ["standard"]:
+    for hedging in HEDGING:
         for weighting in WEIGHTINGS:
-            combination_analysis(
-                strategy_performances, strategy, weighting, "low_cost_universe"
-            )
+            combination_analysis(strategy_performances, hedging, weighting, "0")
 
 
-def main():
+def get_strategy_performance_analysis():
     with open("strategy_performances.json", "r") as file:
         outperformance_analysis(json.load(file))
 
 
 if __name__ == "__main__":
-    main()
+    get_strategy_performance_analysis()

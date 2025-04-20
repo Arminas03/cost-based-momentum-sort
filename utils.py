@@ -71,9 +71,5 @@ def extract_data(path: str) -> pd.DataFrame:
     return data_cleaned
 
 
-def main():
-    df = extract_data("2019-2024 v2.csv")
-
-
 if __name__ == "__main__":
-    main()
+    pass

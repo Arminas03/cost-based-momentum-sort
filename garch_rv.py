@@ -1,13 +1,18 @@
 from arch import arch_model
-import pandas as pd
 import numpy as np
 
 
-def sigma_hat_rv(sum_sq_ret):
+def sigma_hat_rv(sum_sq_ret: list) -> float:
+    """
+    Returns next months volatility estimate, based on RV
+    """
     return np.sqrt(sum_sq_ret * 21 / 126)
 
 
-def sigma_hat_garch(daily_returns: list):
+def sigma_hat_garch(daily_returns: list) -> float:
+    """
+    Returns next months volatility estimate, based on GARCH
+    """
     model = arch_model(
         daily_returns[-500:],
         mean="Zero",
