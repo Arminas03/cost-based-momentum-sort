@@ -29,7 +29,7 @@ def clean_data(data: pd.DataFrame) -> pd.DataFrame:
         & (data["SecuritySubType"] == "COM")
         & (data["USIncFlg"] == "Y")
         & (data["IssuerType"].isin(["ACOR", "CORP"]))
-        & (data["PrimaryExch"] == "N")
+        & (data["PrimaryExch"].isin(["N", "Q", "A"]))
         & (data["ConditionalType"].isin(["RW", "NW"]))
         & (data["TradingStatusFlg"] == "A")
     ]
