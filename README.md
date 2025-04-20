@@ -12,7 +12,7 @@ by:
 
 ## Prerequisites
 
-- Python, the code was tested on version 3.12.0
+- Python, the code has been tested on version 3.12.0
 - Required libraries listed in `requirements.txt`, including their tested versions
 - Two CRSP (version 2) data files for years 1993-2005 and 2005-2024 (all ranges inclusive), name them:
   - `1993-2005 v2.csv`
