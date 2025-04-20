@@ -2,7 +2,12 @@
 
 This repository contains the code of the paper  
 **_“Can Momentum Be Fixed: A Cost-Based Sorting Algorithm”_**
-by *Arminas Ražanauskas*, *Marawan Gamil*, *Kaissar Malaeb*, *Ihor Dumanskyi*.
+
+by:  
+*Arminas Ražanauskas*  
+*Marawan Gamil*  
+*Kaissar Malaeb*  
+*Ihor Dumanskyi*  
 
 
 ## Prerequisites
