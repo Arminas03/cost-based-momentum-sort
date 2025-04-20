@@ -1,6 +1,8 @@
-from portfolio_return import get_equal_and_value_portfolios_return_per_month
-from two_stage_momentum import get_two_stage_momentum_splits
-from final_strat_stats import get_final_strategy_stats
+from run_strategies.portfolio_return import (
+    get_equal_and_value_portfolios_return_per_month,
+)
+from run_strategies.two_stage_momentum import get_two_stage_momentum_splits
+from run_strategies.final_strat_stats import get_final_strategy_stats
 import pandas as pd
 
 
