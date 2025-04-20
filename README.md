@@ -14,5 +14,5 @@ This repository contains the code of the paper
 ## Running
 
 1. Navigate to the folder containing `main.py`
-2. Run main.py to obtain the results
-3. Run run_analysis_scripts.py for the analysis
+2. Run `main.py` to obtain the results
+3. Run `run_analysis_scripts.py` for the analysis
