@@ -9,6 +9,7 @@ def run_two_stage_momentum_sorting():
     Runs the two-stage momentum sort
     """
     for cost_sensitivity in [0, 1, 6, 12]:
+        print(f"running cost sensitivity equal to {cost_sensitivity}")
         for split in [(1993, 2005), (2005, 2024)]:
             get_two_stage_momentum_splits(*split, cost_sensitivity=cost_sensitivity)
 

@@ -258,6 +258,9 @@ def compute_sum_sq_ret(
 def update_daily_returns_list(
     two_stage_date_dict: dict, long_weights: dict, short_weights: dict
 ) -> None:
+    """
+    Updates daily ret list
+    """
     ret_per_day = [0] * 260
     global daily_returns_list
 
@@ -284,6 +287,9 @@ def adjust_weights_with_hedging(
     date: str,
     sigma_target: float = 0.12 / math.sqrt(12),
 ) -> tuple[dict, dict]:
+    """
+    Adjusts weights with hedging
+    """
     global daily_returns_list
     update_daily_returns_list(two_stage_date_dict, long_weights, short_weights)
     sigma_hat = (
@@ -313,6 +319,9 @@ def get_final_weights_for_date(
     sigma_model_rv: bool,
     date: str,
 ) -> tuple[dict, dict]:
+    """
+    Get final long and short weights for date
+    """
     long_weights, short_weights = (
         get_equal_weights(two_stage_date_dict)
         if is_weighting_func_equal
@@ -334,6 +343,9 @@ def get_final_weights_for_date(
 
 
 def get_prev_quoted_spreads(two_stage_date_dict: dict) -> dict:
+    """
+    Get previous quoted bid-ask spreds
+    """
     return {
         permno: two_stage_date_dict[permno]["avg_quoted_spread"]
         for permno, _ in two_stage_date_dict.items()
