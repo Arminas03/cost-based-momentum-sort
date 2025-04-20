@@ -258,6 +258,9 @@ def compute_sum_sq_ret(
 def update_daily_returns_list(
     two_stage_date_dict: dict, long_weights: dict, short_weights: dict
 ) -> None:
+    """
+    Updates daily ret list
+    """
     ret_per_day = [0] * 260
     global daily_returns_list
 
@@ -284,6 +287,9 @@ def adjust_weights_with_hedging(
     date: str,
     sigma_target: float = 0.12 / math.sqrt(12),
 ) -> tuple[dict, dict]:
+    """
+    Adjusts weights with hedging
+    """
     global daily_returns_list
     update_daily_returns_list(two_stage_date_dict, long_weights, short_weights)
     sigma_hat = (
@@ -313,6 +319,9 @@ def get_final_weights_for_date(
     sigma_model_rv: bool,
     date: str,
 ) -> tuple[dict, dict]:
+    """
+    Get final long and short weights for date
+    """
     long_weights, short_weights = (
         get_equal_weights(two_stage_date_dict)
         if is_weighting_func_equal
@@ -334,6 +343,9 @@ def get_final_weights_for_date(
 
 
 def get_prev_quoted_spreads(two_stage_date_dict: dict) -> dict:
+    """
+    Get previous quoted bid-ask spreds
+    """
     return {
         permno: two_stage_date_dict[permno]["avg_quoted_spread"]
         for permno, _ in two_stage_date_dict.items()
@@ -422,15 +434,15 @@ def get_equal_and_value_portfolios_return_per_month(
     end_year: int = 2024,
     hedged: bool = False,
     sigma_model_rv: bool = True,
+    cost_sensitivity: int = 0,
 ) -> tuple[dict, dict]:
     """
-    Can either take input from get_two_stage_momentum_splits directly, or
-    use the json output from two_stage_momentum.py. Returns portfolio returns
-    for equal and value weighted functions
+    Returns portfolio returns for equal and value weighted functions
     """
-    # two_stage_output = get_two_stage_momentum_splits(start_year, end_year)
     two_stage_output = dict()
-    with open(f"final_split_{start_year}_{end_year}.json") as json_file:
+    with open(
+        f"final_split_{start_year}_{end_year}_lambda_{cost_sensitivity}.json"
+    ) as json_file:
         two_stage_output = json.load(json_file)
 
     cum_returns_per_month = find_returns_per_mo_stock(
@@ -460,6 +472,19 @@ def get_equal_and_value_portfolios_return_per_month(
 
 
 if __name__ == "__main__":
-    get_equal_and_value_portfolios_return_per_month(
-        start_year=1993, end_year=2005, hedged=True, sigma_model_rv=True
-    )
+    model_names = {
+        (False, False): "standard",
+        (True, True): "hedged_rv",
+        (True, False): "hedged_garch",
+    }
+
+    for start_year, end_year in [(1993, 2005), (2005, 2024)]:
+        for hedged, sigma_model_rv in model_names:
+            returns_equal, returns_value = (
+                get_equal_and_value_portfolios_return_per_month(
+                    start_year=start_year,
+                    end_year=end_year,
+                    hedged=hedged,
+                    sigma_model_rv=sigma_model_rv,
+                )
+            )

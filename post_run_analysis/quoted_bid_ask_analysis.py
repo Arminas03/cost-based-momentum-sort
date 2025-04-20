@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 
 
 def get_avg_quoted_bid_asks(data_file: str) -> pd.Series:
+    """
+    Gets average quoted bid ask spreads per month
+    """
     data = extract_data(data_file)
 
     return data.groupby(["year", "month"])[["quoted_spread"]].agg(
@@ -17,6 +20,9 @@ def plot_quoted_spread_series(
     plot_x_label: str,
     plot_y_label: str,
 ) -> None:
+    """
+    Plots series of quoted bid-ask spreads development over time
+    """
     plt.figure(figsize=(12, 8))
 
     plt.plot(
@@ -33,6 +39,9 @@ def plot_quoted_spread_series(
 
 
 def get_quoted_bid_ask_spread_analysis() -> None:
+    """
+    Gets quoted bid-ask spread analysis
+    """
     avg_quoted_bid_asks: pd.Series = pd.concat(
         [
             get_avg_quoted_bid_asks("1993-2005 v2.csv"),
@@ -55,9 +64,5 @@ def get_quoted_bid_ask_spread_analysis() -> None:
     )
 
 
-def main():
-    get_quoted_bid_ask_spread_analysis()
-
-
 if __name__ == "__main__":
-    main()
+    get_quoted_bid_ask_spread_analysis()

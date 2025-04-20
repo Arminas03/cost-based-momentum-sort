@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 
 def get_volatility_predictions(path: str) -> pd.Series:
+    """
+    Takes volatility predictions from the output files
+    """
     with open(path, "r") as file:
         vol_predictions = pd.Series(json.load(file))
         vol_predictions.index = (
@@ -19,6 +22,9 @@ def get_volatility_predictions(path: str) -> pd.Series:
 
 
 def get_sample_vol_series(path: str) -> pd.Series:
+    """
+    Gets data sample volatility
+    """
     sum_sq_ret = pd.read_csv(path)[["year", "month", "sum_squared_return"]]
     sum_sq_ret["date"] = pd.to_datetime(
         dict(year=sum_sq_ret["year"], month=sum_sq_ret["month"], day=1)
@@ -29,6 +35,9 @@ def get_sample_vol_series(path: str) -> pd.Series:
 
 
 def get_true_volatilities(path_first_sample: str, path_second_sample: str) -> pd.Series:
+    """
+    Gets true volatilities
+    """
     return pd.concat(
         [
             get_sample_vol_series(path_first_sample),
@@ -42,6 +51,9 @@ def plot_vol_predictions(
     rv_predictions: pd.Series,
     true_volatilities: pd.Series,
 ) -> None:
+    """
+    Plots volatility predictions for both models and the true volatilities
+    """
     plt.figure(figsize=(12, 8))
 
     plt.plot(garch_predictions, label="GARCH Predictions", color="orange")
@@ -55,23 +67,32 @@ def plot_vol_predictions(
     plt.show()
 
 
-def get_mse(model_predictions: pd.Series, true_values: pd.Series):
+def get_mse(model_predictions: pd.Series, true_values: pd.Series) -> float:
+    """
+    Computes MSE
+    """
     return ((model_predictions - true_values) ** 2).mean()
 
 
 def get_mse_analysis(
     garch_predictions: pd.Series, rv_predictions: pd.Series, true_values: pd.Series
-):
+) -> None:
+    """
+    Prints out the MSEs of GARCH and RV predictions
+    """
     print(f"GARCH MSE: {get_mse(garch_predictions, true_values)}")
     print(f"RV MSE: {get_mse(rv_predictions, true_values)}")
 
 
-def main():
+def run_volatility_prediction_analysis() -> None:
+    """
+    Runs analysis of GARCH and RV predictions
+    """
     garch_predictions = get_volatility_predictions("vol_predictions_GARCH.json")
     rv_predictions = get_volatility_predictions("vol_predictions_RV.json")
     true_rv = get_true_volatilities(
-        "lambda_0_res/ret_cost_standard_value_1993_2005.csv",
-        "lambda_0_res/ret_cost_standard_value_2005_2024.csv",
+        "ret_cost_standard_value_1993_2005_lambda_0.csv",
+        "ret_cost_standard_value_2005_2024_lambda_0.csv",
     )
 
     plot_vol_predictions(garch_predictions, rv_predictions, true_rv)
@@ -79,4 +100,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_volatility_prediction_analysis()
